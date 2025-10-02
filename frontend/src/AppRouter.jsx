@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Routes, Route, useNavigate, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import LoginPage from './pages/Login'
@@ -7,54 +7,47 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import TaskForm from './pages/TaskForm'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
-
-function useAuth() {
-  const [token, setToken] = useState(localStorage.getItem('token') || '')
-  const login = (t) => { localStorage.setItem('token', t); setToken(t) }
-  const logout = () => { localStorage.removeItem('token'); setToken('') }
-  return { token, login, logout }
-}
-
-async function api(path, method='GET', body, token) {
-  const headers = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${API_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  if (!res.ok) throw new Error(await res.text())
-  if (res.status === 204) return null
-  return await res.json()
-}
-
-
 export default function AppRouter() {
-  const auth = useAuth()
-  const navigate = useNavigate()
+  const { isAuthenticated, logout } = useAuth()
+  
   return (
     <>
-      <Navbar authed={!!auth.token} onLogout={() => { auth.logout(); navigate('/') }} />
-      <main className="min-h-screen bg-gray-50">
+      <Navbar />
+      <main className="min-h-screen">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<LoginPage onLogin={auth.login} api={api} />} />
-          <Route path="/register" element={<Register api={api} />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<Register />} />
           <Route
             path="/dashboard"
             element={
-              auth.token
-                ? <Dashboard token={auth.token} api={api} navigate={navigate} />
-                : <Navigate to="/" replace />
+              isAuthenticated
+                ? <Dashboard />
+                : <Navigate to="/login" replace />
             }
           />
           <Route
             path="/task"
             element={
-              auth.token
-                ? <TaskForm token={auth.token} api={api} navigate={navigate} />
-                : <Navigate to="/" replace />
+              isAuthenticated
+                ? <TaskForm />
+                : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="/tasks/new"
+            element={
+              isAuthenticated
+                ? <TaskForm />
+                : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="/task/:id"
+            element={
+              isAuthenticated
+                ? <TaskForm />
+                : <Navigate to="/login" replace />
             }
           />
         </Routes>

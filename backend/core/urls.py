@@ -16,9 +16,18 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.views.generic.base import RedirectView
+from django.http import JsonResponse
+
+
+def health(_request):
+    return JsonResponse({"status": "ok"})
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('tasks.urls')),
     path('api/', include('users.urls')),
+    # Health endpoint and root redirect for convenience
+    path('api/health/', health, name='health'),
+    path('', RedirectView.as_view(url='/api/', permanent=False), name='root'),
 ]
