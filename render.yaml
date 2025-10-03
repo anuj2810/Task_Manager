@@ -1,10 +1,12 @@
 databases:
   - name: inzint-db
+    plan: free
 
 services:
   - type: web
     name: inzint-backend
     runtime: python
+    plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
     startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:8000
