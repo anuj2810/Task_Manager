@@ -16,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const API_GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     // Restore session
@@ -43,7 +44,19 @@ export const AuthProvider = ({ children }) => {
       const access = data.access;
       if (!access) throw new Error('Missing access token');
 
-      const authUser = { email, username: email };
+      // Fetch user details using the access token
+      const meRes = await fetch(`${API_URL}/auth/me/`, {
+        headers: { 'Authorization': `Bearer ${access}` }
+      });
+      let authUser = { email, username: email };
+      if (meRes.ok) {
+        const me = await meRes.json();
+        authUser = {
+          username: me.username || email,
+          email: me.email || email,
+          name: me.name || null,
+        };
+      }
       localStorage.setItem('token', access);
       localStorage.setItem('user', JSON.stringify(authUser));
       setToken(access);
@@ -62,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       const res = await fetch(`${API_URL}/auth/register/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, email, password })
+        body: JSON.stringify({ username: email, email, password, first_name: name })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -91,6 +104,30 @@ export const AuthProvider = ({ children }) => {
     setUser(newUser);
   };
 
+  const googleLogin = async (idToken) => {
+    try {
+      const res = await fetch(`${API_URL}/auth/google/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_token: idToken })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Google login failed');
+      }
+      const data = await res.json();
+      const access = data.access;
+      const authUser = data.user || null;
+      if (!access || !authUser) throw new Error('Invalid server response');
+
+      setSession(authUser, access);
+      return { success: true, user: authUser, token: access };
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   const value = {
     user,
     token,
@@ -99,6 +136,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     setSession,
+    googleLogin,
     isAuthenticated: !!token
   };
 

@@ -49,23 +49,45 @@ Open `http://localhost:5173/` (or port auto-chosen) for UI.
 - Backend: `cd backend && pytest`
 - Frontend: `cd frontend && npm test` (sample test added)
 
-## Deployment (Render/Railway)
-### Render
-- Create a new Postgres instance
-- Create a Web Service for backend:
-  - Build: `pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput`
-  - Start: `gunicorn core.wsgi:application --bind 0.0.0.0:8000`
-  - Env vars: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `CORS_ALLOWED_ORIGINS`
-- Create a Static Site for frontend:
-  - Build Command: `npm ci && npm run build`
-  - Publish Directory: `frontend/dist`
-  - Env var: `VITE_API_URL` to backend URL
+## Deployment (Render)
+You can deploy both backend and frontend on Render in minutes.
 
-### Railway
-- Add Postgres plugin
-- Backend: Dockerfile at `backend/Dockerfile`
-- Frontend: Dockerfile at `frontend/Dockerfile`
-- Set env vars similar to Render
+### One-click (Blueprint)
+- Commit and push this repo to GitHub.
+- In Render, choose “Blueprint” and point to `render.yaml` in the repo.
+- This provisions:
+  - `inzint-backend` (Python Web Service) with Postgres `inzint-db`.
+  - `inzint-frontend` (Static Site) built from `frontend` and published from `dist`.
+
+Set these environment variables in the Render dashboard after provisioning:
+- Backend:
+  - `DEBUG=false`
+  - `SECRET_KEY=<strong-random-string>`
+  - `ALLOWED_HOSTS=<your-backend.onrender.com,yourdomain.com>`
+  - `CORS_ALLOWED_ORIGINS=<https://your-frontend.onrender.com,https://yourdomain.com>`
+  - `CSRF_TRUSTED_ORIGINS=<https://your-frontend.onrender.com,https://yourdomain.com>`
+  - `GOOGLE_CLIENT_ID=<your-client-id.apps.googleusercontent.com>`
+  - `DATABASE_URL` is auto-injected from `inzint-db` by the blueprint
+- Frontend:
+  - `VITE_API_URL=https://<your-backend-host>/api`
+  - `VITE_GOOGLE_CLIENT_ID=<your-client-id.apps.googleusercontent.com>`
+
+### Manual Setup (if not using Blueprint)
+- Backend Web Service (Environment: Python):
+  - Root Directory: `backend`
+  - Build Command: `pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput`
+  - Start Command: `gunicorn core.wsgi:application --bind 0.0.0.0:8000`
+  - Link a Render Postgres instance; `DATABASE_URL` will be injected automatically
+  - Add env vars listed above under Backend
+- Frontend Static Site:
+  - Root Directory: `frontend`
+  - Build Command: `npm ci && npm run build`
+  - Publish Directory: `dist`
+  - Add env vars listed above under Frontend
+
+### Google OAuth
+- In Google Cloud Console, add your frontend URL to Authorized JavaScript origins: `https://your-frontend.onrender.com` (and your custom domain if used).
+- Keep `GOOGLE_CLIENT_ID` identical in both backend and frontend.
 
 ## Demo Credentials
 - Username: `demo`

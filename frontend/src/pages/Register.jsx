@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
+  const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -12,6 +13,8 @@ const Register = () => {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
+  const [googleInitError, setGoogleInitError] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -39,6 +42,60 @@ const Register = () => {
     }
   };
 
+  useEffect(() => {
+    let timer;
+    if (!GOOGLE_CLIENT_ID) {
+      setGoogleInitError('Missing Google Client ID configuration');
+      return;
+    }
+    let attempts = 0;
+    const maxAttempts = 30; // ~9s
+    const tryInit = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: async (response) => {
+              setIsLoading(true);
+              setError('');
+              const result = await googleLogin(response.credential);
+              setIsLoading(false);
+              if (result.success) {
+                navigate('/dashboard');
+              } else {
+                setError(result.error || 'Google sign-in failed');
+              }
+            },
+          });
+          const el = document.getElementById('googleSignInDiv');
+          if (el) {
+            window.google.accounts.id.renderButton(el, {
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'rectangular',
+              logo_alignment: 'left',
+            });
+            setGoogleLoaded(true);
+          }
+          clearInterval(timer);
+        } catch (e) {
+          console.warn('Google Identity init failed:', e);
+          setGoogleInitError('Google sign-in initialization failed');
+          clearInterval(timer);
+        }
+      } else {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          setGoogleInitError('Google script did not load');
+          clearInterval(timer);
+        }
+      }
+    };
+    timer = setInterval(tryInit, 300);
+    return () => clearInterval(timer);
+  }, [GOOGLE_CLIENT_ID, googleLogin, navigate]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-900 flex items-center justify-center px-4 py-12">
       {/* Background decoration */}
@@ -53,7 +110,7 @@ const Register = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-full mb-4 shadow-lg">
               <span className="text-2xl">📝</span>
             </div>
-            <h2 className="text-3xl font-bold text-white mb-2">Create Account</h2>
+            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Create Account</h2>
             <p className="text-gray-300">Sign up to start managing your tasks</p>
           </div>
 
@@ -134,6 +191,33 @@ const Register = () => {
               )}
             </button>
           </form>
+
+          {/* Or separator */}
+          <div className="flex items-center my-6">
+            <div className="flex-grow border-t border-white/20"></div>
+            <span className="mx-3 text-gray-300 text-sm">or</span>
+            <div className="flex-grow border-t border-white/20"></div>
+          </div>
+
+          {/* Google Sign-in */}
+          <div className="flex justify-center">
+            <div id="googleSignInDiv"></div>
+          </div>
+          {!googleLoaded && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                disabled
+                className="px-4 py-2 rounded-lg bg-white/10 text-white border border-white/20 cursor-not-allowed shadow-sm"
+                title={googleInitError || 'Loading Google sign-in...'}
+              >
+                Continue with Google
+              </button>
+              {googleInitError && (
+                <p className="mt-2 text-red-200 text-sm">{googleInitError}</p>
+              )}
+            </div>
+          )}
 
           {/* Login Link */}
           <div className="mt-8 text-center">

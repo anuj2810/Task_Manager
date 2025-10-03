@@ -1,37 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TasksContext';
+import TaskCard from '../components/TaskCard';
 
 const Dashboard = () => {
   const { tasks, deleteTask, clearTasks } = useTasks();
-  const [filteredTasks, setFilteredTasks] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [isClearing, setIsClearing] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // No precreated tasks; start empty for new users
 
-  // Filter tasks based on status and search term
+  // Debounce search input for better performance
   useEffect(() => {
-    let filtered = tasks;
-    
-    if (filter !== 'all') {
-      filtered = filtered.filter(task => task.status === filter);
-    }
-    
-    if (searchTerm) {
-      filtered = filtered.filter(task => 
-        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        task.description.toLowerCase().includes(searchTerm.toLowerCase())
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Filter tasks based on status and debounced search term
+  const filteredTasks = useMemo(() => {
+    const lower = debouncedSearch.toLowerCase();
+    return tasks.filter((task) => {
+      const statusMatch = filter === 'all' || task.status === filter;
+      if (!statusMatch) return false;
+      if (!lower) return true;
+      return (
+        task.title.toLowerCase().includes(lower) ||
+        task.description.toLowerCase().includes(lower)
       );
-    }
-    
-    setFilteredTasks(filtered);
-  }, [tasks, filter, searchTerm]);
+    });
+  }, [tasks, filter, debouncedSearch]);
 
   const handleDelete = (id) => {
     const confirmed = window.confirm('Delete this task?');
@@ -118,7 +121,15 @@ const Dashboard = () => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">
-                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{user?.username || 'User'}</span>! 👋
+                {(() => {
+                  const displayName = (user?.name && user.name.trim())
+                    || (user?.username && user.username.split('@')[0])
+                    || (user?.email && user.email.split('@')[0])
+                    || 'User';
+                  return (
+                    <>Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{displayName}</span>! 👋</>
+                  );
+                })()}
               </h1>
               <p className="text-gray-300 text-lg">Here's what you need to focus on today</p>
             </div>
@@ -239,53 +250,12 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTasks.map((task) => (
-              <div
+              <TaskCard
                 key={task.id}
-                className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:bg-white/15 transition-all duration-300 transform hover:scale-105 cursor-pointer group"
+                task={task}
                 onClick={() => navigate(`/task/${task.id}`)}
-              >
-                {/* Task Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">{getStatusIcon(task.status)}</span>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors duration-200">
-                        {task.title}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getPriorityColor(task.priority)}`}>
-                      {getPriorityIcon(task.priority)} {task.priority}
-                    </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
-                      title="Delete task"
-                      className="text-red-300 hover:text-red-400 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-2 py-1 text-xs transition-colors"
-                    >
-                      🗑️ Delete
-                    </button>
-                  </div>
-                </div>
-
-                {/* Task Description */}
-                <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                  {task.description}
-                </p>
-
-                {/* Task Footer */}
-                <div className="flex items-center justify-between">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(task.status)}`}>
-                    {task.status.replace('_', ' ')}
-                  </span>
-                  <div className="text-xs text-gray-400">
-                    Due: {new Date(task.due_date).toLocaleDateString()}
-                  </div>
-                </div>
-
-                {/* Hover Effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-              </div>
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}

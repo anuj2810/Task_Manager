@@ -1,0 +1,36 @@
+databases:
+  - name: inzint-db
+
+services:
+  - type: web
+    name: inzint-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
+    startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:8000
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        value: "PLEASE_SET_IN_RENDER_DASHBOARD"
+      - key: ALLOWED_HOSTS
+        value: "PLEASE_SET_BACKEND_HOST"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "PLEASE_SET_FRONTEND_ORIGIN"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "PLEASE_SET_FRONTEND_ORIGIN"
+      - key: GOOGLE_CLIENT_ID
+        value: "PLEASE_SET_GOOGLE_CLIENT_ID"
+      - key: DATABASE_URL
+        fromDatabase: inzint-db
+
+  - type: static
+    name: inzint-frontend
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: "https://PLEASE_SET_BACKEND_HOST/api"
+      - key: VITE_GOOGLE_CLIENT_ID
+        value: "PLEASE_SET_GOOGLE_CLIENT_ID"
