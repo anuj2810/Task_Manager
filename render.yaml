@@ -24,7 +24,7 @@ services:
       - key: DATABASE_URL
         fromDatabase: inzint-db
 
-  - type: static
+  - type: static_site
     name: inzint-frontend
     rootDir: frontend
     buildCommand: npm ci && npm run build
