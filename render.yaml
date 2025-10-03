@@ -18,15 +18,9 @@ services:
       - key: ALLOWED_HOSTS
         value: "PLEASE_SET_BACKEND_HOST"
       - key: CORS_ALLOWED_ORIGINS
-        fromService:
-          name: inzint-frontend
-          type: web
-          property: url
+        sync: false
       - key: CSRF_TRUSTED_ORIGINS
-        fromService:
-          name: inzint-frontend
-          type: web
-          property: url
+        sync: false
       - key: GOOGLE_CLIENT_ID
         value: "PLEASE_SET_GOOGLE_CLIENT_ID"
       - key: DATABASE_URL

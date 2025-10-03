@@ -32,7 +32,24 @@ load_dotenv()
 
 DEBUG = os.getenv('DEBUG', 'true').lower() == 'true'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+def _parse_list_env(key: str):
+    val = os.getenv(key)
+    if not val:
+        return []
+    return [s.strip() for s in val.split(',') if s.strip()]
+
+def _normalize_origin_list(values):
+    out = []
+    for v in values:
+        v = v.strip()
+        if not v:
+            continue
+        if not (v.startswith('http://') or v.startswith('https://')):
+            v = 'https://' + v
+        out.append(v.rstrip('/'))
+    return out
+
+ALLOWED_HOSTS = _parse_list_env('ALLOWED_HOSTS')
 
 # Application definition
 
@@ -156,14 +173,16 @@ CSRF_COOKIE_SECURE = not DEBUG
 
 # CORS
 CORS_ALLOW_CREDENTIALS = True
-if os.getenv('CORS_ALLOWED_ORIGINS'):
-    CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS').split(',')
+_cors_origins = _parse_list_env('CORS_ALLOWED_ORIGINS')
+if _cors_origins:
+    CORS_ALLOWED_ORIGINS = _normalize_origin_list(_cors_origins)
 else:
     CORS_ALLOW_ALL_ORIGINS = True  # dev default; override in production with CORS_ALLOWED_ORIGINS
 
 # CSRF trusted origins
-if os.getenv('CSRF_TRUSTED_ORIGINS'):
-    CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS').split(',')
+_csrf_origins = _parse_list_env('CSRF_TRUSTED_ORIGINS')
+if _csrf_origins:
+    CSRF_TRUSTED_ORIGINS = _normalize_origin_list(_csrf_origins)
 
 # DRF
 REST_FRAMEWORK = {
