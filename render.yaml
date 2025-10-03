@@ -4,7 +4,7 @@ databases:
 services:
   - type: web
     name: inzint-backend
-    env: python
+    runtime: python
     rootDir: backend
     buildCommand: pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput
     startCommand: gunicorn core.wsgi:application --bind 0.0.0.0:8000
@@ -22,7 +22,9 @@ services:
       - key: GOOGLE_CLIENT_ID
         value: "PLEASE_SET_GOOGLE_CLIENT_ID"
       - key: DATABASE_URL
-        fromDatabase: inzint-db
+        fromDatabase:
+          name: inzint-db
+          property: connectionString
 
   - type: web
     name: inzint-frontend
